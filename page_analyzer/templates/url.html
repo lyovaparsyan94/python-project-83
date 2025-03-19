@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block content %}
+<table>
+    <tr>
+        <th>h1</th><th>title</th><th>description</th>
+    </tr>
+    <tr>
+        <td>{{ url_data['h1'] }}</td><td>{{ url_data['title'] }}</td><td>{{ url_data['description'] }}</td>
+    </tr>
+</table>
+{% endblock %}
