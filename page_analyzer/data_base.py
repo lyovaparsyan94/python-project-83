@@ -94,4 +94,37 @@ class UrlRepository:
         with self.cursor as cur:
             cur.execute(query, (url_id,))
             url_checks_info = cur.fetchall()
+
+            for row in url_checks_info:
+                if row['h1'] is None:
+                    row['h1'] = ''
+                if row['title'] is None:
+                    row['title'] = ''
+                if row['description'] is None:
+                    row['description'] = ''
+
             return url_checks_info
+
+    def get_all_urls_checks(self):
+        query = '''
+        SELECT DISTINCT ON (urls.id)
+            urls.id AS id, 
+            urls.name AS name,
+            url_checks.created_at  AS created_at,
+            url_checks.status_code AS status_code
+        FROM urls
+        LEFT JOIN url_checks ON 
+            urls.id = url_checks.url_id;
+        '''
+        with self.cursor as cur:
+            cur.execute(query)
+            all_urls_checks = cur.fetchall()
+
+            for row in all_urls_checks:
+                if row['created_at'] is None:
+                    row['created_at'] = ''
+                if row['status_code'] is None:
+                    row['status_code'] = ''
+
+            return all_urls_checks
+
