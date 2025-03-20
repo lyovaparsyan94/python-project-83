@@ -114,7 +114,8 @@ class UrlRepository:
             url_checks.status_code AS status_code
         FROM urls
         LEFT JOIN url_checks ON 
-            urls.id = url_checks.url_id;
+            urls.id = url_checks.url_id
+        ORDER BY id, created_at DESC;
         '''
         with self.cursor as cur:
             cur.execute(query)

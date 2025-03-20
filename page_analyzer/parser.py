@@ -1,16 +1,16 @@
 from bs4 import BeautifulSoup
 
 
-def get_data(response):
-    soup = BeautifulSoup(response.text, "lxml")
-    data = {}
+def extract_page_data(response):
+    parsed_content = BeautifulSoup(response.text, "lxml")
+    result = {}
 
-    h1_tag = soup.h1.string if soup.h1 else None
-    title_tag = soup.title.string if soup.title else None
-    description_tag = soup.find('meta', {'name': 'description'})
+    heading = parsed_content.h1.string if parsed_content.h1 else None
+    page_title = parsed_content.title.string if parsed_content.title else None
+    meta_description = parsed_content.find('meta', {'name': 'description'})
 
-    data['h1'] = h1_tag
-    data['title'] = title_tag
-    data['description'] = description_tag.get('content') if description_tag else None #noqa
+    result['h1'] = heading
+    result['title'] = page_title
+    result['description'] = meta_description.get('content') if meta_description else None
 
-    return data
+    return result
