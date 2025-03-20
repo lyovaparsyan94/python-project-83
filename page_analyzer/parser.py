@@ -11,6 +11,7 @@ def get_data(response):
 
     result['h1'] = heading
     result['title'] = page_title
-    result['description'] = meta_description.get('content') if meta_description else None
+    result['description'] = meta_description.get('content') \
+        if meta_description else None
 
     return result
