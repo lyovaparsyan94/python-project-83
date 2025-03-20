@@ -4,7 +4,7 @@
 ****
 ### Hexlet tests and linter status:
 [![Actions Status](https://github.com/lyovaparsyan94/python-project-83/actions/workflows/hexlet-check.yml/badge.svg)](https://github.com/lyovaparsyan94/python-project-83/actions)
-[![my check](https://github.com/marentsov/python-project-83/actions/workflows/my_workflow.yml/badge.svg)](https://github.com/marentsov/python-project-83/actions/workflows/my_workflow.yml)
+[![my check](https://github.com/lyovaparsyan94/python-project-83/actions/workflows/my_workflow.yml/badge.svg)](https://github.com/lyovaparsyan94/python-project-83/actions/workflows/my_workflow.yml)
 
 [![Maintainability](https://qlty.sh/badges/c9b2967a-82a3-4827-9804-6afa79abae37/maintainability.svg)](https://qlty.sh/gh/lyovaparsyan94/projects/python-project-83)
 ****

@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup
 
 
-def extract_page_data(response):
+def get_data(response):
     parsed_content = BeautifulSoup(response.text, "lxml")
     result = {}
 
