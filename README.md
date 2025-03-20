@@ -1,8 +1,13 @@
-
-
-# Анализатор страниц
+# Page Analyzer
 ****
+
+## Project Description
+
+Page Analyzer is a website that analyzes specified pages for SEO readiness, similar to PageSpeed Insights.
+****
+
 ### Hexlet tests and linter status:
+
 [![Actions Status](https://github.com/lyovaparsyan94/python-project-83/actions/workflows/hexlet-check.yml/badge.svg)](https://github.com/lyovaparsyan94/python-project-83/actions)
 [![my check](https://github.com/lyovaparsyan94/python-project-83/actions/workflows/my_workflow.yml/badge.svg)](https://github.com/lyovaparsyan94/python-project-83/actions/workflows/my_workflow.yml)
 
@@ -11,12 +16,7 @@
 
 [//]: # ([Демонстрация проекта на render.com]&#40;https://python-project-83-83hv.onrender.comm&#41;)
 
-### Описание проекта
-Анализатор страниц это сайт, который анализирует указанные страницы на SEO-пригодность по аналогии с PageSpeed Insights.
-****
-
-### Использованные технологии:
-
+### Technologies Used:
 
 | Инструмент                                                                       | Описание                                                                                                                                                                                                                                                                    |
 |----------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -30,24 +30,34 @@
 | [validators](https://validators.readthedocs.io/en/latest/#module-validators.url) | "Python Data Validation for Humans™."                                                                                                                                                                                                                                       |
 | [Requests](https://requests.readthedocs.io/en/latest/)                           | "Requests is an elegant and simple HTTP library for Python, built for human beings."                                                                                                                                                                                        |
 | [Beautifulsoup](https://www.crummy.com/software/BeautifulSoup/bs4/doc/)          | "Beautiful Soup is a Python library for pulling data out of HTML and XML files."                                                                                                                                                                                            |
+
 ---
 
-## Установка
-### Склонируйте репозиторий:
+## Installation
+
+### Clone the repository:
+
 ```
 git clone git@github.com:marentsov/python-project-83
 ```
+
 ```
 cd python-project-83
 ```
-### Для использования данного приложения вам необходимо настроить .env файл.
-После клонирования репозитория, вам необходимо переименовать файл .env_example в .env, внутри файла вы найдете переменные SECRET_KEY и DATABASE_URL, вам необходимо заменить их значения на свои. 
+
+### To use this application, you need to configure the .env file.
+
+After cloning the repository, rename the .env_example file to .env. Inside the file, you will find the SECRET_KEY and
+DATABASE_URL variables. Replace their values with your own.
 ****
-### Следующим шагом с помощью команды ниже, установите необходимые зависимости и сгенерируйте таблицы в базе данных.
+
+### Next, use the command below to install the required dependencies and generate the database tables.
+
 ```
 make build
 ```
-### Запустите приложение командой ниже.
+
+### Start the application with the following command:
 
 ```
 make start
