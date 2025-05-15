@@ -9,15 +9,18 @@ from urllib.parse import urlparse
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = '456465'
+app.secret_key = os.getenv('SECRET_KEY')
 app.template_folder = os.path.join(os.path.dirname(__file__), 'templates')
+
 
 def get_db():
     return psycopg2.connect(os.getenv('DATABASE_URL'))
 
+
 @app.route('/')
 def index():
     return render_template('index.html')
+
 
 @app.route('/urls', methods=['GET'])
 def urls():
@@ -73,6 +76,7 @@ def url_detail(id):
         abort(500)
     finally:
         conn.close()
+
 
 @app.route('/urls', methods=['POST'])
 def add_url():
@@ -133,6 +137,7 @@ def url_check(id):
         conn.close()
     return redirect(url_for('url_detail', id=id))
 
+
 def validate_url(url):
     if not url:
         return 'URL обязателен'
@@ -141,4 +146,3 @@ def validate_url(url):
     if not validators.url(url):
         return 'Некорректный URL'
     return None
-
