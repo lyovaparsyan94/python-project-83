@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.getenv('SECRET_KEY')
+app.secret_key = '456465'
 app.template_folder = os.path.join(os.path.dirname(__file__), 'templates')
 
 def get_db():
