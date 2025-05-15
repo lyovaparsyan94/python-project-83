@@ -7,7 +7,7 @@ install:
 		uv sync
 
 render-start:
-		.venv/bin/python -m gunicorn -w 5 -b 0.0.0.0:10000 page_analyzer:app
+		.venv/bin/python -m gunicorn -w 5 -b 0.0.0.0:$(PORT) page_analyzer:app
 
 
 start:
