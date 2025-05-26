@@ -1,8 +1,22 @@
 import os
-from urllib.parse import urlparse
-
-import requests
 from dotenv import load_dotenv
+
+# Attempt to load .env
+# In Hexlet's environment, the .env file is typically at /project/code/.env
+# The WORKDIR in Dockerfile is /project.
+# The application code is expected to be in /project/code/page_analyzer/
+dotenv_path = "/project/code/.env" # Absolute path in the container
+print(f"DEBUG app.py: Attempting to load .env from: {dotenv_path}")
+found_dotenv = load_dotenv(dotenv_path=dotenv_path, override=True)
+print(f"DEBUG app.py: load_dotenv found_dotenv = {found_dotenv}") # Should be True if file was found
+
+# Print key environment variables immediately after load_dotenv
+DATABASE_URL_FROM_ENV = os.getenv('DATABASE_URL')
+SECRET_KEY_FROM_ENV = os.getenv('SECRET_KEY')
+print(f"DEBUG app.py: After load_dotenv: DATABASE_URL='{DATABASE_URL_FROM_ENV}', SECRET_KEY='{SECRET_KEY_FROM_ENV}'")
+
+from urllib.parse import urlparse # Imports after load_dotenv
+import requests
 from flask import (
     Flask,
     flash,
@@ -18,17 +32,21 @@ from .ceo_analysis import get_ceo
 from .checks_repo import CheckRepository
 from .urls_repo import SiteRepository
 
-# Используем жестко заданный путь, ожидаемый в среде тестирования Hexlet
-dotenv_path = "/project/code/.env"
-load_dotenv(dotenv_path=dotenv_path, override=True)
-
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
-app.config['DATABASE_URL'] = os.getenv('DATABASE_URL')
+app.config['SECRET_KEY'] = SECRET_KEY_FROM_ENV
+app.config['DATABASE_URL'] = DATABASE_URL_FROM_ENV
 
-# Отладочный вывод, чтобы проверить, что загрузилось
-print(f"DEBUG from app.py: SECRET_KEY = {app.config.get('SECRET_KEY')}")
-print(f"DEBUG from app.py: DATABASE_URL = {app.config.get('DATABASE_URL')}")
+if not app.config['DATABASE_URL']:
+    print("CRITICAL ERROR from app.py: DATABASE_URL is not set in app.config after os.getenv!")
+elif 'db:5432' not in app.config['DATABASE_URL'] and app.config['DATABASE_URL'] is not None: # Check if not None before string operation
+    print(f"WARNING from app.py: DATABASE_URL ('{app.config['DATABASE_URL']}') does not look like it's pointing to the 'db' service on port 5432.")
+
+print(f"DEBUG app.py: Final app.config: DATABASE_URL='{app.config.get('DATABASE_URL')}', SECRET_KEY='{app.config.get('SECRET_KEY')}'")
+
+# Ensure db_url passed to repositories is not None
+if app.config.get('DATABASE_URL') is None: # Use .get() for safety
+    # This will cause Gunicorn to fail loading the app, which is informative
+    raise ValueError("DATABASE_URL is None in app.config before initializing repositories. Halting application startup.")
 
 url_repo = SiteRepository(app.config['DATABASE_URL'])
 check_repo = CheckRepository(app.config['DATABASE_URL'])
