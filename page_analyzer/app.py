@@ -1,144 +1,133 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, abort
-from dotenv import load_dotenv
 import os
-import psycopg2
-import validators
-from datetime import datetime
 from urllib.parse import urlparse
 
+import requests
+from dotenv import load_dotenv
+from flask import (
+    Flask,
+    flash,
+    get_flashed_messages,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
+from validators import url as validate
+
+from .ceo_analysis import get_ceo
+from .checks_repo import CheckRepository
+from .urls_repo import SiteRepository
+
 load_dotenv()
-
 app = Flask(__name__)
-app.secret_key = os.getenv('SECRET_KEY')
-app.template_folder = os.path.join(os.path.dirname(__file__), 'templates')
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+app.config['DATABASE_URL'] = os.getenv('DATABASE_URL')
 
-def get_db():
-    return psycopg2.connect(os.getenv('DATABASE_URL'))
+url_repo = SiteRepository(app.config['DATABASE_URL'])
+check_repo = CheckRepository(app.config['DATABASE_URL'])
+
+
+def normalize_root(url: str) -> str: 
+    parsed = urlparse(url)
+    scheme = parsed.scheme.lower()
+    netloc = parsed.netloc.lower()
+    return f"{scheme}://{netloc}"
+
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    messages = get_flashed_messages(with_categories=True)
+    return render_template('main.html', messages=messages, url='')
 
-@app.route('/urls', methods=['GET'])
-def urls():
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute('''
-        SELECT 
-            urls.id, 
-            urls.name, 
-            urls.created_at, 
-            MAX(url_checks.created_at) AS last_check
-        FROM urls
-        LEFT JOIN url_checks ON urls.id = url_checks.url_id
-        GROUP BY urls.id
-        ORDER BY urls.created_at DESC;
-    ''')
-    urls = cur.fetchall()
-    cur.close()
-    conn.close()
-    return render_template('urls.html', urls=urls)
-
-
-@app.route('/urls/<int:id>')
-def url_detail(id):
-    conn = get_db()
-    try:
-        with conn.cursor() as cur:
-            # Получение данных URL
-            cur.execute('SELECT * FROM urls WHERE id = %s', (id,))
-            url = cur.fetchone()
-            if not url:
-                abort(404)
-
-            # Получение списка проверок
-            cur.execute('''
-                SELECT 
-                    id, 
-                    url_id, 
-                    status_code, 
-                    h1, 
-                    title, 
-                    description, 
-                    created_at 
-                FROM url_checks
-                WHERE url_id = %s
-                ORDER BY created_at DESC
-            ''', (id,))
-            checks = cur.fetchall()
-
-        return render_template('url_detail.html', url=url, checks=checks)
-    except psycopg2.Error as e:
-        app.logger.error(f'Database error: {str(e)}')
-        abort(500)
-    finally:
-        conn.close()
 
 @app.route('/urls', methods=['POST'])
-def add_url():
-    raw_url = request.form.get('url', '').strip()
-    error = validate_url(raw_url)  # Изменено на error вместо errors
-    if error:
-        flash(error, 'danger')
-        return render_template('index.html', url=raw_url), 422
+def urls_post():
+    user_data = request.form.to_dict()
+    urls = url_repo.get_content()
 
-    parsed_url = urlparse(raw_url)
-    normalized_url = f'{parsed_url.scheme}://{parsed_url.netloc}'
+    urls_names = []
+    for url in urls:
+        urls_names.append(url['name'])
 
-    conn = get_db()
-    cur = conn.cursor()
+    is_valid = validate(user_data['url'])
+    if is_valid is not True:
+        flash('Некорректный URL', 'alert-danger')
+        messages = get_flashed_messages(with_categories=True)
+        return render_template(
+            'main.html',
+            messages=messages,
+            url=user_data['url'],
+            
+        ), 422
+    
+    if len(user_data['url']) > 255:
+        flash('URL превышает 255 символов', 'alert-danger')
+        messages = get_flashed_messages(with_categories=True)
+        return render_template(
+            'main.html',
+            messages=messages,
+            url=user_data['url'],
+        ), 422
+    
+    user_data['url'] = normalize_root(user_data['url'])
+    if user_data['url'] in urls_names:
+        flash('Страница уже существует', 'alert-info')
+        id = url_repo.find_by_name(user_data['url'])['id']
+        return redirect(url_for('urls_show', id=id), code=302)
+    
+    id = url_repo.save(user_data)
+    flash('Страница успешно добавлена', 'alert-success')
+    return redirect(url_for('urls_show', id=id), code=302)
+
+
+@app.route('/urls')
+def urls_get():
+    urls = url_repo.get_content()
+    urls_with_last_check = []
+    for url in urls:
+        url_with_last_check = url
+        last_check = check_repo.get_last_check_date_by_id(url["id"])
+        last_status_code = check_repo.get_last_status_code_by_id(url["id"])
+        url_with_last_check["last_check"] = last_check
+        url_with_last_check["status_code"] = last_status_code
+        urls_with_last_check.append(url_with_last_check)
+    return render_template(
+        'urls.html',
+        urls=urls_with_last_check
+    )
+
+
+@app.route('/urls/<id>')
+def urls_show(id):
+    url = url_repo.find(id)
+    template = 'url.html' if url else 'incorrect_id.html'
+    messages = get_flashed_messages(with_categories=True)
+    checks = check_repo.get_content_by_url_id(id)
+    return render_template(
+        template,
+        url=url,
+        messages=messages,
+        checks=checks
+    )
+
+
+@app.route('/urls/<id>/checks', methods=['POST'])
+def create_check(id):
+    url_row = url_repo.find(id)
+    url = url_row['name']
     try:
-        cur.execute(
-            'INSERT INTO urls (name, created_at) VALUES (%s, %s) RETURNING id;',
-            (normalized_url, datetime.now())
-        )
-        url_id = cur.fetchone()[0]
-        conn.commit()
-        flash('Сайт успешно добавлен', 'success')
-        return redirect(url_for('url_detail', id=url_id))
-    except psycopg2.IntegrityError:
-        conn.rollback()
-        cur.execute('SELECT id FROM urls WHERE name = %s;', (normalized_url,))
-        url_id = cur.fetchone()[0]
-        flash('Страница уже существует', 'info')
-        return redirect(url_for('url_detail', id=url_id))
-    finally:
-        cur.close()
-        conn.close()
+        r = requests.get(url, timeout=10)
+    except requests.exceptions.RequestException:
+        flash('Произошла ошибка при проверке', 'alert-danger')
+        return redirect(url_for('urls_show', id=id))
+    
+    status_code = r.status_code
+    if str(status_code)[0] in ('4', '5'):
+        flash('Произошла ошибка при проверке', 'alert-danger')
+        return redirect(url_for('urls_show', id=id))
 
+    h1, title, desc = get_ceo(r.text)
 
-@app.route('/urls/<int:id>/checks', methods=['POST'])
-def url_check(id):
-    conn = get_db()
-    try:
-        with conn.cursor() as cur:
-            # Проверка существования URL
-            cur.execute('SELECT id FROM urls WHERE id = %s', (id,))
-            if not cur.fetchone():
-                flash('Сайт не найден', 'danger')
-                return redirect(url_for('urls'))
-
-            # Создание проверки
-            cur.execute(
-                'INSERT INTO url_checks (url_id, created_at) VALUES (%s, %s)',
-                (id, datetime.now())
-            )
-            conn.commit()
-            flash('Проверка успешно запущена', 'success')
-    except psycopg2.Error as e:
-        conn.rollback()
-        flash('Ошибка при создании проверки', 'danger')
-        app.logger.error(f'Ошибка базы данных: {e}')
-    finally:
-        conn.close()
-    return redirect(url_for('url_detail', id=id))
-
-def validate_url(url):
-    if not url:
-        return 'URL обязателен'
-    if len(url) > 255:
-        return 'URL превышает 255 символов'
-    if not validators.url(url):
-        return 'Некорректный URL'
-    return None
-
+    check_repo.save(id, status_code, h1, title, desc)
+    flash('Страница успешно проверена', 'alert-success')
+    return redirect(url_for('urls_show', id=id))

@@ -1,8 +1,5 @@
-# Установка uv
+#!/usr/bin/env bash
+
 curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Вместо source используем точку, которая работает во всех POSIX-совместимых оболочках
-. $HOME/.local/bin/env
-
-# Установка и настройка базы данных
+source $HOME/.local/bin/env
 make install && psql -a -d $DATABASE_URL -f database.sql
