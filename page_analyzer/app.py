@@ -18,7 +18,13 @@ from .ceo_analysis import get_ceo
 from .checks_repo import CheckRepository
 from .urls_repo import SiteRepository
 
-load_dotenv()
+dotenv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'code', '.env')
+if not os.path.exists(dotenv_path):
+    # Альтернативный путь, если структура папок code/page_analyzer
+    dotenv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '.env') # Для структуры code/page_analyzer и code/.env
+
+load_dotenv(dotenv_path=dotenv_path, override=True)
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 app.config['DATABASE_URL'] = os.getenv('DATABASE_URL')
