@@ -1,15 +1,19 @@
 import pytest
 import psycopg2
-from page_analyzer.app import app
+import os
+from .app import app
 
 blobfish_url = 'https://ru.wikipedia.org/wiki/Psychrolutes_marcidus'
 invalid_url = 'kjdho72417ojef'
 
 @pytest.fixture
 def setup_db():
+    print(f"DEBUG in setup_db (new location): DATABASE_URL from app.config = {app.config.get('DATABASE_URL')}")
     conn = psycopg2.connect(app.config['DATABASE_URL'])
     with conn.cursor() as cur:
-        with open('../../database.sql', 'r') as f:
+        db_sql_path = os.path.join(os.path.dirname(__file__), '../database.sql')
+        print(f"DEBUG in setup_db (new location): Attempting to open {db_sql_path}")
+        with open(db_sql_path, 'r') as f:
             cur.execute(f.read())
         conn.commit()
         yield
@@ -34,7 +38,4 @@ def test_urls_post_invalid(client, setup_db):
 
 def test_urls_post_valid(client, setup_db):
     response = client.post('/urls', data={'url': blobfish_url})
-    assert response.status_code == 302
-
-
-
+    assert response.status_code == 302 
