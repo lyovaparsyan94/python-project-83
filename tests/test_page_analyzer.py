@@ -9,7 +9,7 @@ invalid_url = 'kjdho72417ojef'
 def setup_db():
     conn = psycopg2.connect(app.config['DATABASE_URL'])
     with conn.cursor() as cur:
-        with open('database.sql', 'r') as f:
+        with open('../database.sql', 'r') as f:
             cur.execute(f.read())
         conn.commit()
         yield
