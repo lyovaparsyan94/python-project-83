@@ -18,16 +18,17 @@ from .ceo_analysis import get_ceo
 from .checks_repo import CheckRepository
 from .urls_repo import SiteRepository
 
-dotenv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'code', '.env')
-if not os.path.exists(dotenv_path):
-    # Альтернативный путь, если структура папок code/page_analyzer
-    dotenv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '.env') # Для структуры code/page_analyzer и code/.env
-
+# Используем жестко заданный путь, ожидаемый в среде тестирования Hexlet
+dotenv_path = "/project/code/.env"
 load_dotenv(dotenv_path=dotenv_path, override=True)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 app.config['DATABASE_URL'] = os.getenv('DATABASE_URL')
+
+# Отладочный вывод, чтобы проверить, что загрузилось
+print(f"DEBUG from app.py: SECRET_KEY = {app.config.get('SECRET_KEY')}")
+print(f"DEBUG from app.py: DATABASE_URL = {app.config.get('DATABASE_URL')}")
 
 url_repo = SiteRepository(app.config['DATABASE_URL'])
 check_repo = CheckRepository(app.config['DATABASE_URL'])
