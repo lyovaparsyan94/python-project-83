@@ -1,145 +1,130 @@
 import os
-from urllib.parse import urlparse
-
+import datetime
 import requests
-from dotenv import load_dotenv
 from flask import (
-    Flask,
-    flash,
-    get_flashed_messages,
-    redirect,
-    render_template,
-    request,
-    url_for,
+    Flask, render_template, request, 
+    redirect, url_for, flash, get_flashed_messages
 )
-from validators import url as validate
+from bs4 import BeautifulSoup
+from dotenv import load_dotenv
+from .db import (
+    add_url, get_url_by_id, get_url_by_name,
+    get_all_urls, add_url_check, get_url_checks,
+    is_valid_url, normalize_url
+)
 
-from .ceo_analysis import get_ceo
-from .checks_repo import CheckRepository
-from .urls_repo import SiteRepository
-
-# Attempt to load .env
-# In Hexlet's environment, the .env file is typically at /project/code/.env
-# The WORKDIR in Dockerfile is /project.
-# The application code is expected to be in /project/code/page_analyzer/
-dotenv_path = "/project/code/.env"  # Absolute path in the container
-load_dotenv(dotenv_path=dotenv_path, override=True)
+load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
-app.config['DATABASE_URL'] = os.getenv('DATABASE_URL')
 
-# Ensure db_url passed to repositories is not None
-if app.config.get('DATABASE_URL') is None:
-    # This will cause Gunicorn to fail loading the app, which is informative
-    raise ValueError("DATABASE_URL is None in app.config before initializing repositories. "  # noqa
-                     "Halting application startup.")
-
-url_repo = SiteRepository(app.config['DATABASE_URL'])
-check_repo = CheckRepository(app.config['DATABASE_URL'])
-
-
-def normalize_root(url: str) -> str:
-    parsed = urlparse(url)
-    scheme = parsed.scheme.lower()
-    netloc = parsed.netloc.lower()
-    return f"{scheme}://{netloc}"
-
+@app.context_processor
+def inject_current_year():
+    return {'current_year': datetime.datetime.now().year}
 
 @app.route('/')
 def index():
     messages = get_flashed_messages(with_categories=True)
-    return render_template('main.html', messages=messages, url='')
-
+    app.logger.debug(f"Flash messages on index: {messages}")
+    return render_template('index.html', messages=messages)
 
 @app.route('/urls', methods=['POST'])
-def urls_post():
-    user_data = request.form.to_dict()
-    urls = url_repo.get_content()
-
-    urls_names = []
-    for url in urls:
-        urls_names.append(url['name'])
-
-    is_valid = validate(user_data['url'])
-    if is_valid is not True:
-        flash('Некорректный URL', 'alert-danger')
-        messages = get_flashed_messages(with_categories=True)
-        return render_template(
-            'main.html',
-            messages=messages,
-            url=user_data['url'],
-
-        ), 422
-
-    if len(user_data['url']) > 255:
-        flash('URL превышает 255 символов', 'alert-danger')
-        messages = get_flashed_messages(with_categories=True)
-        return render_template(
-            'main.html',
-            messages=messages,
-            url=user_data['url'],
-        ), 422
-
-    user_data['url'] = normalize_root(user_data['url'])
-    if user_data['url'] in urls_names:
-        flash('Страница уже существует', 'alert-info')
-        id = url_repo.find_by_name(user_data['url'])['id']
-        return redirect(url_for('urls_show', id=id), code=302)
-
-    id = url_repo.save(user_data)
-    flash('Страница успешно добавлена', 'alert-success')
-    return redirect(url_for('urls_show', id=id), code=302)
-
+def add_url_handler():
+    url = request.form.get('url')
+    
+    if not is_valid_url(url):
+        flash('Некорректный URL', 'danger')
+        return render_template('index.html', url=url), 422
+    
+    normalized_url = normalize_url(url)
+    existing_url = get_url_by_name(normalized_url)
+    
+    if existing_url:
+        flash('Страница уже существует', 'info')
+        return redirect(url_for('show_url', id=existing_url['id']))
+    
+    try:
+        url_id = add_url(normalized_url)
+        flash('Страница успешно добавлена', 'success')
+        return redirect(url_for('show_url', id=url_id))
+    except Exception as e:
+        app.logger.error(f"Database error: {str(e)}")
+        flash('Ошибка при добавлении страницы', 'danger')
+        return redirect(url_for('index'))
 
 @app.route('/urls')
-def urls_get():
-    urls = url_repo.get_content()
-    urls_with_last_check = []
-    for url in urls:
-        url_with_last_check = url
-        last_check = check_repo.get_last_check_date_by_id(url["id"])
-        last_status_code = check_repo.get_last_status_code_by_id(url["id"])
-        url_with_last_check["last_check"] = last_check
-        url_with_last_check["status_code"] = last_status_code
-        urls_with_last_check.append(url_with_last_check)
-    return render_template(
-        'urls.html',
-        urls=urls_with_last_check
-    )
+def list_urls():
+    urls = get_all_urls()
+    return render_template('urls/index.html', urls=urls)
 
-
-@app.route('/urls/<id>')
-def urls_show(id):
-    url = url_repo.find(id)
-    template = 'url.html' if url else 'incorrect_id.html'
+@app.route('/urls/<int:id>')
+def show_url(id):
+    url = get_url_by_id(id)
+    if not url:
+        flash('Страница не найдена', 'danger')
+        return redirect(url_for('index'))
+    
+    checks = get_url_checks(id)
     messages = get_flashed_messages(with_categories=True)
-    checks = check_repo.get_content_by_url_id(id)
-    return render_template(
-        template,
-        url=url,
-        messages=messages,
-        checks=checks
-    )
+    return render_template('urls/show.html', url=url, checks=checks, messages=messages)
 
-
-@app.route('/urls/<id>/checks', methods=['POST'])
-def create_check(id):
-    url_row = url_repo.find(id)
-    url = url_row['name']
+@app.post('/urls/<int:id>/checks')
+def check_url(id):
+    url_data = get_url_by_id(id)
+    if not url_data:
+        flash('Страница не найдена', 'danger')
+        return redirect(url_for('index'))
+    
+    url_name = url_data['name']
+    
     try:
-        r = requests.get(url, timeout=10)
-    except requests.exceptions.RequestException:
-        flash('Произошла ошибка при проверке', 'alert-danger')
-        return redirect(url_for('urls_show', id=id))
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+        }
+        
+        response = requests.get(
+            url_name,
+            headers=headers,
+            timeout=10,
+            allow_redirects=True
+        )
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        h1_tag = soup.find('h1')
+        h1 = h1_tag.text.strip() if h1_tag else None
+        
+        title_tag = soup.find('title')
+        title = title_tag.text.strip() if title_tag else None
+        
+        meta_desc = soup.find('meta', attrs={'name': 'description'})
+        description = meta_desc['content'].strip() if meta_desc and meta_desc.get('content') else None
+        
+        if description and len(description) > 255:
+            description = description[:252] + '...'
+        
+        add_url_check(id, response.status_code, h1, title, description)
+        flash('Страница успешно проверена', 'success')
+        
+    except requests.exceptions.RequestException as e:
+        if isinstance(e, requests.exceptions.Timeout):
+            error_msg = 'Таймаут при проверке сайта'
+        elif isinstance(e, requests.exceptions.TooManyRedirects):
+            error_msg = 'Слишком много перенаправлений'
+        elif isinstance(e, requests.exceptions.SSLError):
+            error_msg = 'Ошибка SSL сертификата'
+        else:
+            error_msg = f'Ошибка при проверке: {str(e)}'
+        
+        flash(error_msg, 'danger')
+    
+    except Exception as e:
+        flash(f'Неизвестная ошибка: {str(e)}', 'danger')
+    
+    return redirect(url_for('show_url', id=id))
 
-    status_code = r.status_code
-    if str(status_code)[0] in ('4', '5'):
-        flash('Произошла ошибка при проверке', 'alert-danger')
-        return redirect(url_for('urls_show', id=id))
-
-    h1, title, desc = get_ceo(r.text)
-
-    check_repo.save(id, status_code, h1, title, desc)
-    flash('Страница успешно проверена', 'alert-success')
-    return redirect(url_for('urls_show', id=id))
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8000)

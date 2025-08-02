@@ -1,19 +1,8 @@
 ### Hexlet tests and linter status:
-[![Actions Status](https://github.com/karanice/python-project-83/actions/workflows/hexlet-check.yml/badge.svg)](https://github.com/karanice/python-project-83/actions)
+[![Actions Status](https://github.com/sroonla/python-project-83/actions/workflows/hexlet-check.yml/badge.svg)](https://github.com/sroonla/python-project-83/actions)
 
-[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=karanice_python-project-83&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=karanice_python-project-83)
+### Render.com
+[Демо на Render.com](https://python-project-83-qwy4.onrender.com)
 
-### Description
-This is a study project - web-app for brief seo-analysis of sites by url.
-
-### Technologies
-This project is made with:
-- uv package manager
-- flask
-- ruff as linter
-- postgresql and psycopg2
-- gunicorn 
-- python libraries for work with http: requests and validators
-- pytest and pytest-cov
-
-Site is available [here](https://page-analyzer-x085.onrender.com/)
+# Sonar
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=sroonla_python-project-83&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=sroonla_python-project-83)

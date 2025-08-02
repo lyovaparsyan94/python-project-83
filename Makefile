@@ -1,29 +1,19 @@
-install:
-		uv sync
-
-dev:
-		uv run flask --debug --app page_analyzer:app run
-
 PORT ?= 8000
-start:
-		uv run gunicorn -w 5 -b 0.0.0.0:$(PORT) page_analyzer:app
 
-build:
-		./build.sh
-
-render-start:
-		gunicorn -w 5 -b 0.0.0.0:$(PORT) page_analyzer:app
-
-lint:
-		uv run ruff check page_analyzer
-
-fix-lint:
-		uv run ruff check --fix page_analyzer  
+install:
+    pip install --upgrade pip
+    pip install -r requirements.txt
 
 test:
-		PYTHONPATH=$(PWD) uv run pytest -vv
+    pytest
 
-test-coverage:
-		uv run pytest --cov=gendiff --cov-report xml
+coverage:
+    coverage run --branch -m pytest
+    coverage report
+	coverage html
 
-check: test lint
+start:
+    gunicorn -w 5 -b 0.0.0.0:$(PORT) wsgi:app
+
+dev:
+    flask --app page_analyzer.app run --host=0.0.0.0 --port=$(PORT) --debug
