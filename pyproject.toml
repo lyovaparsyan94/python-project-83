@@ -1,18 +1,25 @@
 [project]
+authors = [
+    {name = "Alina Makarovskaya", email = "makarovskaya1307@gmail.com"},
+]
+requires-python = ">=3.11"
 name = "hexlet-code"
 version = "0.1.0"
-description = "Add your description here"
+description = "Project #3 - Page Analyzer"
 readme = "README.md"
-requires-python = ">=3.11"
 dependencies = [
-    "bs4>=0.0.2",
+    "beautifulsoup4>=4.13.3",
     "flask>=3.1.0",
     "gunicorn>=23.0.0",
-    "lxml>=5.3.1",
     "psycopg2-binary>=2.9.10",
     "python-dotenv>=1.0.1",
     "requests>=2.32.3",
     "validators>=0.34.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.9.4",
 ]
 
 [build-system]
@@ -21,9 +28,3 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["page_analyzer"]
-
-[dependency-groups]
-dev = [
-    "pytest>=8.3.5",
-    "ruff>=0.9.9",
-]
