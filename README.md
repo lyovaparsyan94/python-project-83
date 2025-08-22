@@ -38,7 +38,7 @@ Page Analyzer is a website that analyzes specified pages for SEO readiness, simi
 ### Clone the repository:
 
 ```
-git clone git@github.com:marentsov/python-project-83
+git clone git@github.com:lyovaparsyan94/python-project-83.git
 ```
 
 ```
